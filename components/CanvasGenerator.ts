@@ -1,5 +1,6 @@
 import { App, TFile, Notice, TAbstractFile } from "obsidian";
 import { parseFileName } from "utils";
+import CanvasNode from "./CanvasNode";
 
 function getCanvasFilesInFolder(basename: string, folderPath: string): TFile[] {
 	const folder = this.app.vault.getAbstractFileByPath(folderPath);
@@ -55,10 +56,6 @@ export async function createCanvasWithNodes(
 	openOnCreate: boolean,
 	canvasFileName: string
 ) {
-	const nodeWidth = 250;
-	const nodeHeight = 100;
-	const spacing = 20;
-
 	if (files.length === 0) {
 		new Notice("The folder is empty!");
 		return;
@@ -70,17 +67,9 @@ export async function createCanvasWithNodes(
 	);
 
 	const canvasData = {
-		nodes: files.map((file, index) => {
-			return {
-				id: `node-${index}`,
-				x: (index % nodesPerRow) * (nodeWidth + spacing), // Grid X position
-				y: Math.floor(index / nodesPerRow) * (nodeHeight + spacing), // Grid Y position
-				width: nodeWidth,
-				height: nodeHeight,
-				type: "file",
-				file: file.path,
-			};
-		}),
+		nodes: files.map(
+			(file, index) => new CanvasNode(index, nodesPerRow, file.path)
+		),
 		edges: [],
 	};
 

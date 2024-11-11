@@ -9,19 +9,20 @@ import {
 } from "obsidian";
 import { createCanvasWithNodes } from "./components/CanvasGenerator";
 import { FolderSuggestModal } from "./components/FolderSuggestModal";
+import CanvasNode, { TCanvasData } from "components/CanvasNode";
 
 interface FolderCanvasPluginSettings {
 	nodesPerRow: number;
 	openOnCreate: boolean;
 	canvasFileName: string;
-	defaultFolderPath: string;
+	watchFolder: boolean;
 }
 
 const DEFAULT_SETTINGS: FolderCanvasPluginSettings = {
 	nodesPerRow: 4,
 	openOnCreate: true,
 	canvasFileName: `Canvas-${Date.now()}.canvas`,
-	defaultFolderPath: "test",
+	watchFolder: true,
 };
 
 const COMMAND_ID = "foldercanvas:generate-canvas-from-folder";
@@ -89,8 +90,9 @@ export default class FolderCanvasPlugin extends Plugin {
 	}
 
 	async generateCanvas(folder: TFolder) {
-		const filename =
-			this.settings.canvasFileName || DEFAULT_SETTINGS.canvasFileName;
+		this.watchFolder(folder);
+
+		const filename = this.settings.canvasFileName;
 
 		const files = folder.children.filter(
 			(file) => file instanceof TFile && file.extension === "md"
@@ -103,6 +105,80 @@ export default class FolderCanvasPlugin extends Plugin {
 			this.settings.openOnCreate,
 			filename
 		);
+	}
+
+	watchFolder(folder: TFolder) {
+		console.log("watch: ", this.settings.watchFolder);
+		if (this.settings.watchFolder) {
+			// Watch for file creation
+			this.registerEvent(
+				this.app.vault.on("create", async (file) => {
+					if (
+						file.parent?.path === folder.path &&
+						file instanceof TFile &&
+						file.extension === "md"
+					) {
+						setTimeout(
+							() => this.updateCanvas(folder, "add", file),
+							100
+						); // add 100ms delay to ensure file is fully created
+					}
+				})
+			);
+
+			// Watch for file deletion
+			this.registerEvent(
+				this.app.vault.on("delete", async (file) => {
+					if (
+						file.path.includes(folder.path) &&
+						file instanceof TFile &&
+						file.extension === "md"
+					) {
+						this.updateCanvas(folder, "remove", file);
+					}
+				})
+			);
+		}
+	}
+
+	async updateCanvas(folder: TFolder, action: "add" | "remove", file: TFile) {
+		const canvasFile = folder.children.find(
+			(child) =>
+				child instanceof TFile &&
+				child.extension === "canvas" &&
+				child.basename.includes(this.settings.canvasFileName)
+		) as TFile;
+
+		if (!canvasFile) return;
+
+		const canvasData: TCanvasData = JSON.parse(
+			await this.app.vault.read(canvasFile)
+		);
+
+		if (action === "add") {
+			const index = (canvasFile.parent as TFolder).children.filter(
+				(file: TFile) => file.extension === "md"
+			).length;
+
+			const newNode = new CanvasNode(
+				index,
+				this.settings.nodesPerRow,
+				file.path
+			);
+
+			canvasData.nodes.push(newNode.toJSON());
+		} else if (action === "remove") {
+			canvasData.nodes = canvasData.nodes.filter(
+				(node) => !node.file.endsWith(file.path)
+			);
+		}
+
+		// Update the canvas file with modified data
+		await this.app.vault.modify(
+			canvasFile,
+			JSON.stringify(canvasData, null, 2)
+		);
+		new Notice("Canvas updated.");
 	}
 
 	async triggerCommandById() {
@@ -125,7 +201,7 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 		containerEl.createEl("h2", { text: "Folder Canvas Settings" });
 
 		new Setting(containerEl)
-			.setName("Canvas Filename Pattern")
+			.setName("Canvas filename pattern")
 			.setDesc("Specify the default filename for a new canvas.")
 			.addText((text) =>
 				text
@@ -133,14 +209,14 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.canvasFileName)
 					.onChange(async (value) => {
 						this.plugin.settings.canvasFileName =
-							value ?? this.plugin.settings.canvasFileName;
+							value || DEFAULT_SETTINGS.canvasFileName;
 						await this.plugin.saveSettings();
 					})
 			);
 
 		// Slider setting for nodes per row with dynamic description
 		const nodesPerRowSetting = new Setting(containerEl)
-			.setName(`Nodes Per Row: ${this.plugin.settings.nodesPerRow}`)
+			.setName(`Nodes per row: ${this.plugin.settings.nodesPerRow}`)
 			.setDesc("Number of nodes to display per row in the canvas.")
 			.addSlider((slider) =>
 				slider
@@ -155,7 +231,7 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 
 		// Toggle setting for opening canvas on creation
 		new Setting(containerEl)
-			.setName("Open Canvas on Creation")
+			.setName("Open canvas on creation")
 			.setDesc(
 				"Automatically open the new canvas file after it is created."
 			)
@@ -164,6 +240,21 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.openOnCreate)
 					.onChange(async (value) => {
 						this.plugin.settings.openOnCreate = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		// Toggle setting for watching file changes in canvas folder
+		new Setting(containerEl)
+			.setName("Watch canvas folder")
+			.setDesc(
+				"Automatically update the canvas when files are added or removed from the folder."
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.watchFolder)
+					.onChange(async (value) => {
+						this.plugin.settings.watchFolder = value;
 						await this.plugin.saveSettings();
 					})
 			);

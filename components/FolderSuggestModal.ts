@@ -23,7 +23,7 @@ export class FolderSuggestModal extends SuggestModal<TFolder> {
 
 		const allFolders: TFolder[] = this.app.vault
 			.getRoot()
-			.children.filter((f) => f instanceof TFolder);
+			.children.filter((f): f is TFolder => f instanceof TFolder);
 
 		for (const folder of allFolders) {
 			addFolder(folder);

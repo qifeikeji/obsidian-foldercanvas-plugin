@@ -3,7 +3,7 @@ import { parseFileName } from "utils";
 import CanvasNode from "./CanvasNode";
 
 function getCanvasFilesInFolder(basename: string, folderPath: string): TFile[] {
-	const folder = this.app.vault.getAbstractFileByPath(folderPath);
+	const folder = this.app.vault.getFolderByPath(folderPath);
 	if (!folder) return [];
 
 	const files: TFile[] = [];

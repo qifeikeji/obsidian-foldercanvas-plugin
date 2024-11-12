@@ -237,15 +237,25 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Canvas filename pattern")
-			.setDesc("Specify the default filename for a new canvas.")
+			.setDesc(
+				"Specify the default filename for a new canvas. (Cannot contain '/' or '\\')"
+			)
 			.addText((text) =>
 				text
 					.setPlaceholder("Canvas-<Date>.canvas")
 					.setValue(this.plugin.settings.canvasFileName)
 					.onChange(async (value) => {
-						this.plugin.settings.canvasFileName =
-							value || DEFAULT_SETTINGS.canvasFileName;
-						await this.plugin.saveSettings();
+						// Check for invalid characters
+						if (/[\\/]/.test(value)) {
+							new Notice(
+								"Invalid characters: '/' and '\\' are not allowed."
+							);
+							text.setValue(this.plugin.settings.canvasFileName);
+						} else {
+							this.plugin.settings.canvasFileName =
+								value || DEFAULT_SETTINGS.canvasFileName;
+							await this.plugin.saveSettings();
+						}
 					})
 			);
 

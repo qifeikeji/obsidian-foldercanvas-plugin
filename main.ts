@@ -175,7 +175,7 @@ export default class FolderCanvasPlugin extends Plugin {
 			(child) =>
 				child instanceof TFile &&
 				child.extension === "canvas" &&
-				child.basename.includes(this.settings.canvasFileName)
+				this.settings.canvasFileName.includes(child.basename)
 		) as TFile;
 
 		if (!canvasFile) return;

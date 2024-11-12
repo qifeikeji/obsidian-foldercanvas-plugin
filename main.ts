@@ -233,7 +233,7 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl("h2", { text: "Folder Canvas Settings" });
+		containerEl.createEl("h2", { text: "Folder Canvas" });
 
 		new Setting(containerEl)
 			.setName("Canvas filename pattern")

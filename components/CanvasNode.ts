@@ -2,7 +2,7 @@ export const NODE_WIDTH = 250;
 export const NODE_HEIGHT = 100;
 export const NODE_SPACING = 20;
 
-type TCanvasNode = {
+export type TCanvasNode = {
 	id: string;
 	x: number;
 	y: number;

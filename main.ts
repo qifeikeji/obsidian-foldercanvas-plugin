@@ -9,7 +9,7 @@ import {
 } from "obsidian";
 import { createCanvasWithNodes } from "./components/CanvasGenerator";
 import { FolderSuggestModal } from "./components/FolderSuggestModal";
-import CanvasNode, { TCanvasData } from "components/CanvasNode";
+import CanvasNode, { TCanvasData, TCanvasNode } from "components/CanvasNode";
 
 interface FolderCanvasPluginSettings {
 	nodesPerRow: number;
@@ -25,7 +25,10 @@ const DEFAULT_SETTINGS: FolderCanvasPluginSettings = {
 	watchFolder: true,
 };
 
-const COMMAND_ID = "foldercanvas:generate-canvas-from-folder";
+const PLUGIN_NAME = "foldercanvas";
+const COMMMAND_ID = "generate-canvas-from-folder";
+const COMMAND_NAME = "Generate Canvas from Folder";
+const COMMAND_FULL_ID = `${PLUGIN_NAME}:${COMMMAND_ID}`;
 
 export default class FolderCanvasPlugin extends Plugin {
 	settings: FolderCanvasPluginSettings;
@@ -40,8 +43,8 @@ export default class FolderCanvasPlugin extends Plugin {
 		this.addSettingTab(new FolderCanvasSettingTab(this.app, this));
 
 		this.addCommand({
-			id: "generate-canvas-from-folder",
-			name: "Generate Canvas from Folder",
+			id: COMMMAND_ID,
+			name: COMMAND_NAME,
 			callback: async () => {
 				new FolderSuggestModal(this.app, async (folder) => {
 					try {
@@ -108,7 +111,6 @@ export default class FolderCanvasPlugin extends Plugin {
 	}
 
 	watchFolder(folder: TFolder) {
-		console.log("watch: ", this.settings.watchFolder);
 		if (this.settings.watchFolder) {
 			// Watch for file creation
 			this.registerEvent(
@@ -138,10 +140,37 @@ export default class FolderCanvasPlugin extends Plugin {
 					}
 				})
 			);
+
+			// Watch for file renaming
+			this.registerEvent(
+				this.app.vault.on("rename", async (file, oldPath) => {
+					if (
+						file.path.includes(folder.path) &&
+						file instanceof TFile &&
+						file.extension === "md"
+					) {
+						setTimeout(
+							() =>
+								this.updateCanvas(
+									folder,
+									"rename",
+									file,
+									oldPath
+								),
+							100
+						);
+					}
+				})
+			);
 		}
 	}
 
-	async updateCanvas(folder: TFolder, action: "add" | "remove", file: TFile) {
+	async updateCanvas(
+		folder: TFolder,
+		action: "add" | "remove" | "rename",
+		file: TFile,
+		oldPath?: string
+	) {
 		const canvasFile = folder.children.find(
 			(child) =>
 				child instanceof TFile &&
@@ -171,6 +200,12 @@ export default class FolderCanvasPlugin extends Plugin {
 			canvasData.nodes = canvasData.nodes.filter(
 				(node) => !node.file.endsWith(file.path)
 			);
+		} else if (action === "rename" && oldPath) {
+			canvasData.nodes.forEach((node: TCanvasNode) => {
+				if (node.file === oldPath) {
+					node.file = file.path; // Update to the new file path
+				}
+			});
 		}
 
 		// Update the canvas file with modified data
@@ -182,7 +217,7 @@ export default class FolderCanvasPlugin extends Plugin {
 	}
 
 	async triggerCommandById() {
-		(this.app as any).commands.executeCommandById(COMMAND_ID);
+		(this.app as any).commands.executeCommandById(COMMAND_FULL_ID);
 	}
 }
 

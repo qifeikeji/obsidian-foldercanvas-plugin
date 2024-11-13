@@ -98,8 +98,10 @@ export default class FolderCanvasPlugin extends Plugin {
 		const filename = this.settings.canvasFileName;
 
 		const files = folder.children.filter(
-			(file) => file instanceof TFile && file.extension === "md"
-		) as TFile[];
+			(file): file is TFile =>
+				file instanceof TFile && file.extension === "md"
+		);
+
 		await createCanvasWithNodes(
 			this.app,
 			folder.path,
@@ -172,11 +174,11 @@ export default class FolderCanvasPlugin extends Plugin {
 		oldPath?: string
 	) {
 		const canvasFile = folder.children.find(
-			(child) =>
+			(child): child is TFile =>
 				child instanceof TFile &&
 				child.extension === "canvas" &&
 				this.settings.canvasFileName.includes(child.basename)
-		) as TFile;
+		);
 
 		if (!canvasFile) return;
 
@@ -185,17 +187,19 @@ export default class FolderCanvasPlugin extends Plugin {
 		);
 
 		if (action === "add") {
-			const index = (canvasFile.parent as TFolder).children.filter(
-				(file: TFile) => file.extension === "md"
-			).length;
+			if (canvasFile.parent) {
+				const index = canvasFile.parent.children.filter(
+					(file: TFile) => file.extension === "md"
+				).length;
 
-			const newNode = new CanvasNode(
-				index,
-				this.settings.nodesPerRow,
-				file.path
-			);
+				const newNode = new CanvasNode(
+					index,
+					this.settings.nodesPerRow,
+					file.path
+				);
 
-			canvasData.nodes.push(newNode.toJSON());
+				canvasData.nodes.push(newNode.toJSON());
+			}
 		} else if (action === "remove") {
 			canvasData.nodes = canvasData.nodes.filter(
 				(node) => !node.file.endsWith(file.path)

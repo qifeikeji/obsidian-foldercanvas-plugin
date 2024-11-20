@@ -1,5 +1,5 @@
 import { App, TFile, Notice, TAbstractFile } from "obsidian";
-import { parseFileName } from "utils";
+import { parseFileName } from "src/utils";
 import CanvasNode from "./CanvasNode";
 
 function getCanvasFilesInFolder(basename: string, folderPath: string): TFile[] {

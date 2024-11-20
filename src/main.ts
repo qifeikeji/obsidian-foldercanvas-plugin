@@ -9,7 +9,10 @@ import {
 } from "obsidian";
 import { createCanvasWithNodes } from "./components/CanvasGenerator";
 import { FolderSuggestModal } from "./components/FolderSuggestModal";
-import CanvasNode, { TCanvasData, TCanvasNode } from "components/CanvasNode";
+import CanvasNode, {
+	TCanvasData,
+	TCanvasNode,
+} from "src/components/CanvasNode";
 
 interface FolderCanvasPluginSettings {
 	nodesPerRow: number;

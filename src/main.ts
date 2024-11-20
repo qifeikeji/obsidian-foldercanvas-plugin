@@ -7,12 +7,16 @@ import {
 	TFile,
 	TFolder,
 } from "obsidian";
-import { createCanvasWithNodes } from "./components/CanvasGenerator";
-import { FolderSuggestModal } from "./components/FolderSuggestModal";
 import CanvasNode, {
 	TCanvasData,
 	TCanvasNode,
 } from "src/components/CanvasNode";
+import {
+	createCanvasWithNodes,
+	getCanvasFilesInFolder,
+} from "./components/CanvasGenerator";
+import { FolderSuggestModal } from "./components/FolderSuggestModal";
+import { normalizeFileName } from "./utils";
 
 interface FolderCanvasPluginSettings {
 	nodesPerRow: number;
@@ -81,6 +85,35 @@ export default class FolderCanvasPlugin extends Plugin {
 				});
 			})
 		);
+
+		this.app.workspace.onLayoutReady(() => {
+			this.registerEvent(
+				this.app.vault.on("create", async (file) => {
+					if (file instanceof TFile && file.extension === "md") {
+						setTimeout(() => this.updateCanvas("add", file), 100); // add 100ms delay to ensure file is fully created
+					}
+				})
+			);
+
+			this.registerEvent(
+				this.app.vault.on("delete", async (file) => {
+					if (file instanceof TFile && file.extension === "md") {
+						this.updateCanvas("remove", file);
+					}
+				})
+			);
+
+			this.registerEvent(
+				this.app.vault.on("rename", async (file, oldPath) => {
+					if (file instanceof TFile && file.extension === "md") {
+						setTimeout(
+							() => this.updateCanvas("rename", file, oldPath),
+							100
+						);
+					}
+				})
+			);
+		});
 	}
 
 	async loadSettings() {
@@ -96,8 +129,6 @@ export default class FolderCanvasPlugin extends Plugin {
 	}
 
 	async generateCanvas(folder: TFolder) {
-		this.watchFolder(folder);
-
 		const filename = this.settings.canvasFileName;
 
 		const files = folder.children.filter(
@@ -115,73 +146,20 @@ export default class FolderCanvasPlugin extends Plugin {
 		);
 	}
 
-	watchFolder(folder: TFolder) {
-		if (this.settings.watchFolder) {
-			// Watch for file creation
-			this.registerEvent(
-				this.app.vault.on("create", async (file) => {
-					if (
-						file.parent?.path === folder.path &&
-						file instanceof TFile &&
-						file.extension === "md"
-					) {
-						setTimeout(
-							() => this.updateCanvas(folder, "add", file),
-							100
-						); // add 100ms delay to ensure file is fully created
-					}
-				})
-			);
-
-			// Watch for file deletion
-			this.registerEvent(
-				this.app.vault.on("delete", async (file) => {
-					if (
-						file.path.includes(folder.path) &&
-						file instanceof TFile &&
-						file.extension === "md"
-					) {
-						this.updateCanvas(folder, "remove", file);
-					}
-				})
-			);
-
-			// Watch for file renaming
-			this.registerEvent(
-				this.app.vault.on("rename", async (file, oldPath) => {
-					if (
-						file.path.includes(folder.path) &&
-						file instanceof TFile &&
-						file.extension === "md"
-					) {
-						setTimeout(
-							() =>
-								this.updateCanvas(
-									folder,
-									"rename",
-									file,
-									oldPath
-								),
-							100
-						);
-					}
-				})
-			);
-		}
-	}
-
 	async updateCanvas(
-		folder: TFolder,
 		action: "add" | "remove" | "rename",
 		file: TFile,
 		oldPath?: string
 	) {
-		const canvasFile = folder.children.find(
-			(child): child is TFile =>
-				child instanceof TFile &&
-				child.extension === "canvas" &&
-				this.settings.canvasFileName.includes(child.basename)
+		if (!this.settings.watchFolder) return;
+
+		// Find the latest canvas file in the parent folder
+		const parentPath = file.path.split("/")[0];
+		const normalizedFileName = normalizeFileName(
+			this.settings.canvasFileName
 		);
+		const canvases = getCanvasFilesInFolder(parentPath, normalizedFileName);
+		const canvasFile = canvases?.pop();
 
 		if (!canvasFile) return;
 

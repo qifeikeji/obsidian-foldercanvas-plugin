@@ -19,3 +19,6 @@ export const parseFileName = (fileName: string): FileNameComponents => {
 		ext: ".canvas",
 	};
 };
+
+export const normalizeFileName = (fileName: string) =>
+	fileName.endsWith(".canvas") ? fileName : `${fileName}.canvas`;

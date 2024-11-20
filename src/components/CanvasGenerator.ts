@@ -1,8 +1,11 @@
 import { App, TFile, Notice, TAbstractFile } from "obsidian";
-import { parseFileName } from "src/utils";
+import { normalizeFileName, parseFileName } from "src/utils";
 import CanvasNode from "./CanvasNode";
 
-function getCanvasFilesInFolder(basename: string, folderPath: string): TFile[] {
+export function getCanvasFilesInFolder(
+	folderPath: string,
+	basename: string
+): TFile[] {
 	const folder = this.app.vault.getFolderByPath(folderPath);
 	if (!folder) return [];
 
@@ -24,14 +27,11 @@ function getCanvasFilesInFolder(basename: string, folderPath: string): TFile[] {
 }
 
 function generateUniqueFileName(folderPath: string, fileName: string): string {
-	const normalizedFileName = fileName.endsWith(".canvas")
-		? fileName
-		: `${fileName}.canvas`;
-
+	const normalizedFileName = normalizeFileName(fileName);
 	const components = parseFileName(normalizedFileName);
 	const existingFiles = getCanvasFilesInFolder(
-		components.baseName,
-		folderPath
+		folderPath,
+		components.baseName
 	);
 
 	// Find the highest number used in existing files with the same base name

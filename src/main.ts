@@ -30,7 +30,7 @@ const DEFAULT_SETTINGS: FolderCanvasPluginSettings = {
 
 const PLUGIN_NAME = "foldercanvas";
 const COMMMAND_ID = "generate-canvas-from-folder";
-const COMMAND_NAME = "Generate Canvas from Folder";
+const COMMAND_NAME = "Generate Canvas from folder";
 const COMMAND_FULL_ID = `${PLUGIN_NAME}:${COMMMAND_ID}`;
 
 export default class FolderCanvasPlugin extends Plugin {
@@ -240,8 +240,6 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl("h2", { text: "Folder Canvas" });
-
 		new Setting(containerEl)
 			.setName("Canvas filename pattern")
 			.setDesc(
@@ -298,7 +296,7 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 
 		// Toggle setting for watching file changes in canvas folder
 		new Setting(containerEl)
-			.setName("Watch canvas folder")
+			.setName("Watch Canvas folder")
 			.setDesc(
 				"Automatically update the canvas when files are added or removed from the folder."
 			)

@@ -1,11 +1,9 @@
 import { App, TFile, Notice, TAbstractFile } from "obsidian";
 import { normalizeFileName, parseFileName } from "src/utils";
 import CanvasNode from "./CanvasNode";
+import { FolderCanvasPluginSettings } from "src/main";
 
-export function getCanvasFilesInFolder(
-	folderPath: string,
-	basename: string
-): TFile[] {
+function getCanvasFilesInFolder(folderPath: string, basename: string): TFile[] {
 	const folder = this.app.vault.getFolderByPath(folderPath);
 	if (!folder) return [];
 
@@ -52,9 +50,8 @@ export async function createCanvasWithNodes(
 	app: App,
 	folderPath: string,
 	files: TFile[],
-	nodesPerRow: number,
-	openOnCreate: boolean,
-	canvasFileName: string
+	canvasFileName: string,
+	settings: FolderCanvasPluginSettings
 ) {
 	if (files.length === 0) {
 		new Notice("The folder is empty!");
@@ -68,7 +65,7 @@ export async function createCanvasWithNodes(
 
 	const canvasData = {
 		nodes: files.map(
-			(file, index) => new CanvasNode(index, nodesPerRow, file.path)
+			(file, index) => new CanvasNode(index, file.path, settings)
 		),
 		edges: [],
 	};
@@ -78,13 +75,13 @@ export async function createCanvasWithNodes(
 		JSON.stringify(canvasData, null, 2)
 	);
 
-	if (openOnCreate) {
+	if (settings.openOnCreate) {
 		await app.workspace.openLinkText(canvasFileNameWithFolder, "", true);
 	}
 
 	if (canvasFile) {
 		new Notice(`Canvas created at ${canvasFileNameWithFolder}`);
 	} else {
-		new Notice("Failed to create canvas file.");
+		new Notice("Failed to create a Canvas file.");
 	}
 }

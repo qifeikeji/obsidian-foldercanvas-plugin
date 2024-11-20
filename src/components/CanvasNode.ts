@@ -1,6 +1,4 @@
-export const NODE_WIDTH = 250;
-export const NODE_HEIGHT = 100;
-export const NODE_SPACING = 20;
+import { FolderCanvasPluginSettings } from "src/main";
 
 export type TCanvasNode = {
 	id: string;
@@ -32,19 +30,14 @@ class CanvasNode {
 
 	constructor(
 		index: number,
-		nodesPerRow: number,
 		filePath: string,
-		nodeWidth?: number,
-		nodeHeight?: number,
-		spacing?: number
+		settings: FolderCanvasPluginSettings
 	) {
-		nodeWidth = nodeWidth || NODE_WIDTH;
-		nodeHeight = nodeHeight || NODE_HEIGHT;
-		spacing = spacing || NODE_SPACING;
+		const { nodesPerRow, nodeWidth, nodeHeight, nodeSpacing } = settings;
 
 		this.id = `node-${index}`;
-		this.x = (index % nodesPerRow) * (nodeWidth + spacing);
-		this.y = Math.floor(index / nodesPerRow) * (nodeHeight + spacing);
+		this.x = (index % nodesPerRow) * (nodeWidth + nodeSpacing);
+		this.y = Math.floor(index / nodesPerRow) * (nodeHeight + nodeSpacing);
 		this.width = nodeWidth;
 		this.height = nodeHeight;
 		this.type = "file";

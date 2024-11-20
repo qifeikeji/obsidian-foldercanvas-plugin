@@ -4,6 +4,7 @@ import {
 	Plugin,
 	PluginSettingTab,
 	Setting,
+	TAbstractFile,
 	TFile,
 	TFolder,
 } from "obsidian";
@@ -11,18 +12,21 @@ import CanvasNode, {
 	TCanvasData,
 	TCanvasNode,
 } from "src/components/CanvasNode";
-import {
-	createCanvasWithNodes,
-	getCanvasFilesInFolder,
-} from "./components/CanvasGenerator";
+import { createCanvasWithNodes } from "./components/CanvasGenerator";
 import { FolderSuggestModal } from "./components/FolderSuggestModal";
-import { normalizeFileName } from "./utils";
+import { normalizeFileName, parseFileName } from "./utils";
 
-interface FolderCanvasPluginSettings {
+export interface FolderCanvasPluginSettings {
 	nodesPerRow: number;
 	openOnCreate: boolean;
 	canvasFileName: string;
 	watchFolder: boolean;
+	nodeWidth: number;
+	nodeHeight: number;
+	nodeSpacing: number;
+	maxWidth: number;
+	maxHeight: number;
+	maxSpacing: number;
 }
 
 const DEFAULT_SETTINGS: FolderCanvasPluginSettings = {
@@ -30,6 +34,12 @@ const DEFAULT_SETTINGS: FolderCanvasPluginSettings = {
 	openOnCreate: true,
 	canvasFileName: `Canvas-${Date.now()}.canvas`,
 	watchFolder: true,
+	nodeWidth: 250,
+	nodeHeight: 100,
+	nodeSpacing: 20,
+	maxWidth: 1000,
+	maxHeight: 1000,
+	maxSpacing: 100,
 };
 
 const PLUGIN_NAME = "foldercanvas";
@@ -58,7 +68,7 @@ export default class FolderCanvasPlugin extends Plugin {
 						await this.generateCanvas(folder);
 					} catch (error) {
 						new Notice(
-							"Failed to generate canvas. Please try again."
+							"Failed to generate a Canvas file. Please try again."
 						);
 						console.error(error);
 					}
@@ -129,7 +139,7 @@ export default class FolderCanvasPlugin extends Plugin {
 	}
 
 	async generateCanvas(folder: TFolder) {
-		const filename = this.settings.canvasFileName;
+		const canvasFilename = this.settings.canvasFileName;
 
 		const files = folder.children.filter(
 			(file): file is TFile =>
@@ -140,10 +150,40 @@ export default class FolderCanvasPlugin extends Plugin {
 			this.app,
 			folder.path,
 			files,
-			this.settings.nodesPerRow,
-			this.settings.openOnCreate,
-			filename
+			canvasFilename,
+			this.settings
 		);
+	}
+
+	async getCurrentCanvasFile(file: TFile) {
+		// Find the latest canvas file in the parent folder
+		const parentPath = file.path.split("/")[0];
+
+		const folder = this.app.vault.getFolderByPath(parentPath);
+		if (!folder) return;
+
+		const canvases: TFile[] = [];
+
+		const getCurrentCanvas = (file: TAbstractFile) => {
+			if (file instanceof TFile) {
+				const normalizedFileName = normalizeFileName(
+					this.settings.canvasFileName
+				);
+				const components = parseFileName(normalizedFileName);
+				if (
+					file.extension === "canvas" &&
+					file.path.includes(components.baseName)
+				) {
+					canvases.push(file);
+				}
+			} else {
+				// @ts-ignore - Accessing children property of TFolder
+				file.children?.forEach((child) => getCurrentCanvas(child));
+			}
+		};
+
+		getCurrentCanvas(folder);
+		return canvases?.pop();
 	}
 
 	async updateCanvas(
@@ -153,14 +193,7 @@ export default class FolderCanvasPlugin extends Plugin {
 	) {
 		if (!this.settings.watchFolder) return;
 
-		// Find the latest canvas file in the parent folder
-		const parentPath = file.path.split("/")[0];
-		const normalizedFileName = normalizeFileName(
-			this.settings.canvasFileName
-		);
-		const canvases = getCanvasFilesInFolder(parentPath, normalizedFileName);
-		const canvasFile = canvases?.pop();
-
+		const canvasFile = await this.getCurrentCanvasFile(file);
 		if (!canvasFile) return;
 
 		const canvasData: TCanvasData = JSON.parse(
@@ -173,11 +206,7 @@ export default class FolderCanvasPlugin extends Plugin {
 					(file: TFile) => file.extension === "md"
 				).length;
 
-				const newNode = new CanvasNode(
-					index,
-					this.settings.nodesPerRow,
-					file.path
-				);
+				const newNode = new CanvasNode(index, file.path, this.settings);
 
 				canvasData.nodes.push(newNode.toJSON());
 			}
@@ -242,26 +271,11 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 					})
 			);
 
-		// Slider setting for nodes per row with dynamic description
-		const nodesPerRowSetting = new Setting(containerEl)
-			.setName(`Nodes per row: ${this.plugin.settings.nodesPerRow}`)
-			.setDesc("Number of nodes to display per row in the canvas.")
-			.addSlider((slider) =>
-				slider
-					.setLimits(1, 10, 1)
-					.setValue(this.plugin.settings.nodesPerRow)
-					.onChange(async (value) => {
-						this.plugin.settings.nodesPerRow = value;
-						await this.plugin.saveSettings();
-						nodesPerRowSetting.setName(`Nodes Per Row: ${value}`);
-					})
-			);
-
 		// Toggle setting for opening canvas on creation
 		new Setting(containerEl)
-			.setName("Open canvas on creation")
+			.setName("Open Canvas on creation")
 			.setDesc(
-				"Automatically open the new canvas file after it is created."
+				"Automatically open the new Canvas file after it is created."
 			)
 			.addToggle((toggle) =>
 				toggle
@@ -276,7 +290,7 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Watch Canvas folder")
 			.setDesc(
-				"Automatically update the canvas when files are added or removed from the folder."
+				"Automatically update the Canvas when files are added or removed from the folder."
 			)
 			.addToggle((toggle) =>
 				toggle
@@ -286,5 +300,121 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					})
 			);
+
+		// Slider setting for nodes per row
+		const nodesPerRowSetting = new Setting(containerEl)
+			.setName(`Nodes per row: ${this.plugin.settings.nodesPerRow}`)
+			.setDesc("Number of nodes to display per row in the Canvas.")
+			.addSlider((slider) =>
+				slider
+					.setLimits(1, 10, 1)
+					.setValue(this.plugin.settings.nodesPerRow)
+					.onChange(async (value) => {
+						this.plugin.settings.nodesPerRow = value;
+						await this.plugin.saveSettings();
+						nodesPerRowSetting.setName(`Nodes per row: ${value}`);
+					})
+			);
+
+		// Adjust the dimensions and spacing
+		let nodeWidthInput: HTMLInputElement;
+		new Setting(containerEl)
+			.setName("Node width")
+			.setDesc("Set the width of nodes (default: 250, max: 1000).")
+			.addText((text) => {
+				text.setValue(
+					this.plugin.settings.nodeWidth.toString()
+				).onChange(async (value) => {
+					const parsedValue = this.validateInput(
+						value,
+						this.plugin.settings.maxWidth
+					);
+					this.plugin.settings.nodeWidth = parsedValue;
+					await this.plugin.saveSettings();
+				});
+				nodeWidthInput = text.inputEl;
+			})
+			.addButton((button) => {
+				button
+					.setButtonText("Reset")
+					.setTooltip("Reset to default")
+					.onClick(async () => {
+						this.plugin.settings.nodeWidth =
+							DEFAULT_SETTINGS.nodeWidth;
+						await this.plugin.saveSettings();
+						nodeWidthInput.value =
+							DEFAULT_SETTINGS.nodeWidth.toString();
+					});
+			});
+
+		let nodeHeightInput: HTMLInputElement;
+		new Setting(containerEl)
+			.setName("Node height")
+			.setDesc("Set the height of nodes (default: 100, max: 1000).")
+			.addText((text) => {
+				text.setValue(
+					this.plugin.settings.nodeHeight.toString()
+				).onChange(async (value) => {
+					const parsedValue = this.validateInput(
+						value,
+						this.plugin.settings.maxWidth
+					);
+					this.plugin.settings.nodeHeight = parsedValue;
+					await this.plugin.saveSettings();
+				});
+				nodeHeightInput = text.inputEl;
+			})
+			.addButton((button) => {
+				button
+					.setButtonText("Reset")
+					.setTooltip("Reset to default")
+					.onClick(async () => {
+						this.plugin.settings.nodeHeight =
+							DEFAULT_SETTINGS.nodeHeight;
+						await this.plugin.saveSettings();
+						nodeHeightInput.value =
+							DEFAULT_SETTINGS.nodeHeight.toString();
+					});
+			});
+
+		let nodeSpacingInput: HTMLInputElement;
+		new Setting(containerEl)
+			.setName("Node spacing")
+			.setDesc("Set the spacing between nodes (default: 20, max: 100).")
+			.addText((text) => {
+				text.setValue(
+					this.plugin.settings.nodeSpacing.toString()
+				).onChange(async (value) => {
+					const parsedValue = this.validateInput(
+						value,
+						this.plugin.settings.maxWidth
+					);
+					this.plugin.settings.nodeSpacing = parsedValue;
+					await this.plugin.saveSettings();
+				});
+				nodeSpacingInput = text.inputEl;
+			})
+			.addButton((button) => {
+				button
+					.setButtonText("Reset")
+					.setTooltip("Reset to default")
+					.onClick(async () => {
+						this.plugin.settings.nodeSpacing =
+							DEFAULT_SETTINGS.nodeSpacing;
+						await this.plugin.saveSettings();
+						nodeSpacingInput.value =
+							DEFAULT_SETTINGS.nodeSpacing.toString();
+					});
+			});
+	}
+
+	validateInput(value: string, max: number): number {
+		let num = parseInt(value, 10);
+
+		if (isNaN(num)) {
+			num = 0;
+		}
+
+		return Math.min(num, max); // Enforce maximum constraint
 	}
 }

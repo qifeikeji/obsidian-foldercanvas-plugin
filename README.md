@@ -1,6 +1,6 @@
 # Folder Canvas Plugin
 
-[Folder Canvas](https://github.com/nancyel/obsidian-foldercanvas-plugin) is a plugin for [Obsidian.md](https://obsidian.md/) that lets you generate a canvas view of a given folder.
+[Folder Canvas](https://github.com/nancyel/obsidian-foldercanvas-plugin) is a plugin for [Obsidian.md](https://obsidian.md/) that lets you generate a Canvas view of a given folder.
 
 ## Demo
 
@@ -19,11 +19,12 @@
 
 ## Expected Behaviors
 
--   A canvas file will be created only if 1 or more markdown files are found in the folder. Otherwise, a notice will be displayed: `"The folder is empty!"`
--   A canvas file will be created in the parent folder of the files.
--   Nested folders are ignored; only the direct 1st level files will be included in a canvas.
--   A filename for each new canvas will be incremented if a canvas file with the same name is found in the parent folder.
--   If a canvas file is renamed, `Watch Canvas folder` will work only if `Canvas filename pattern` is updated to match the new name.
+-   A Canvas file will be created only if 1 or more markdown files are found in the folder. Otherwise, a notice will be displayed: `"The folder is empty!"`
+-   A Canvas file will be created in the parent folder of the files.
+-   Nested folders are ignored; only the direct 1st level files will be included in a Canvas.
+-   A filename for each new Canvas will be incremented if a Canvas file with the same name is found in the parent folder.
+-   If `Watch Canvas folder` is enabled, changes in the folder will be reflected in the latest Canvas file.
+-   If a Canvas file is renamed, `Watch Canvas folder` will work properly if `Canvas filename pattern` is updated to match the new name.
 
 ![Folder Canvas Settings](/public/data/foldercanvas-watch.png)
 
@@ -31,10 +32,11 @@
 
 -   The following parameters can be configured in the settings. Default values are:
 
-    -   **Canvas filename pattern**: A new canvas filename, if left blank, will be "Canvas-<Date.now()>.canvas" (e.g. Canvas-1731313974017.canvas) and saved in the parent folder of the files.
+    -   **Canvas filename pattern**: A new Canvas filename, if left blank, will be "Canvas-<Date.now()>.canvas" (e.g. Canvas-1731313974017.Canvas) and saved in the parent folder of the files.
+    -   **Open Canvas on creation**: A new Canvas is automatically opened upon creation.
+    -   **Watch Canvas folder**: A Canvas file is modified to reflect changes in the folder.
     -   **Nodes per row**: The number of columns to display notes is set to 4. It is configurable with a slider 1-10.
-    -   **Open canvas on creation**: A new canvas is automatically opened upon creation.
-    -   **Watch canvas folder**: A canvas file is modified to reflect changes in the folder.
+    -   **Node width, height, and spacing**: The width, height, and spacing of the nodes can be configured with constraints. Can be reset to default.
 
 ## How to Contribute
 

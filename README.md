@@ -25,6 +25,7 @@
 -   A filename for each new Canvas will be incremented if a Canvas file with the same name is found in the parent folder.
 -   If `Watch Canvas folder` is enabled, changes in the folder will be reflected in the latest Canvas file.
 -   If a Canvas file is renamed, `Watch Canvas folder` will work properly if `Canvas filename pattern` is updated to match the new name.
+-   If a heading is selected in `Narrow to heading`, all nodes will display content under the chosen heading. If a node does not contain the selected heading, the setting will be ignored, and the full content will be shown. Create a new Canvas file for the changes to take effect.
 
 ![Folder Canvas Settings](/src/public/data/foldercanvas-watch.png)
 
@@ -37,6 +38,7 @@
     -   **Watch Canvas folder**: A Canvas file is modified to reflect changes in the folder.
     -   **Nodes per row**: The number of columns to display notes is set to 4. It is configurable with a slider 1-10.
     -   **Node width, height, and spacing**: The width, height, and spacing of the nodes can be configured with constraints. Can be reset to default.
+    -   **Narrow to heading**: A dropdown menu will display the headings from the currently active file. If no headings are found, the menu will remain empty.
 
 ## How to Contribute
 

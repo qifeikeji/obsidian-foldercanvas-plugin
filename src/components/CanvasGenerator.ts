@@ -64,12 +64,28 @@ export async function createCanvasWithNodes(
 	);
 
 	const canvasData = {
-		nodes: files.map(
-			(file, index) => new CanvasNode(index, file.path, settings)
+		nodes: await Promise.all(
+			files.map(async (file, index) => {
+				try {
+					const content = await app.vault.read(file);
+					const headings = content
+						.split("\n")
+						.filter((line: string) => line.trim().match(/^#+\s+/))
+						.map((line: string) => line.replace(/^#+\s*/, ""));
+
+					if (!headings.includes(settings.selectedHeading)) {
+						settings.selectedHeading = "";
+					}
+
+					return new CanvasNode(index, file.path, settings);
+				} catch (error) {
+					console.log(error);
+					return null;
+				}
+			})
 		),
 		edges: [],
 	};
-
 	const canvasFile = await app.vault.create(
 		canvasFileNameWithFolder,
 		JSON.stringify(canvasData, null, 2)

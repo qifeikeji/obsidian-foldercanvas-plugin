@@ -8,6 +8,7 @@ export type TCanvasNode = {
 	height: number;
 	type: string;
 	file: string;
+	subpath?: string;
 };
 
 export type TCanvasData = {
@@ -27,13 +28,20 @@ class CanvasNode {
 	height: number;
 	type: string;
 	file: string;
+	subpath?: string;
 
 	constructor(
 		index: number,
 		filePath: string,
 		settings: FolderCanvasPluginSettings
 	) {
-		const { nodesPerRow, nodeWidth, nodeHeight, nodeSpacing } = settings;
+		const {
+			nodesPerRow,
+			nodeWidth,
+			nodeHeight,
+			nodeSpacing,
+			selectedHeading,
+		} = settings;
 
 		this.id = `node-${index}`;
 		this.x = (index % nodesPerRow) * (nodeWidth + nodeSpacing);
@@ -42,6 +50,7 @@ class CanvasNode {
 		this.height = nodeHeight;
 		this.type = "file";
 		this.file = filePath;
+		this.subpath = selectedHeading ? `#${selectedHeading}` : undefined;
 	}
 
 	toJSON() {
@@ -53,6 +62,7 @@ class CanvasNode {
 			height: this.height,
 			type: this.type,
 			file: this.file,
+			subpath: this.subpath,
 		};
 	}
 }

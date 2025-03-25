@@ -27,6 +27,7 @@ export interface FolderCanvasPluginSettings {
 	maxWidth: number;
 	maxHeight: number;
 	maxSpacing: number;
+	selectedHeading: string;
 }
 
 const DEFAULT_SETTINGS: FolderCanvasPluginSettings = {
@@ -40,6 +41,7 @@ const DEFAULT_SETTINGS: FolderCanvasPluginSettings = {
 	maxWidth: 1000,
 	maxHeight: 1000,
 	maxSpacing: 100,
+	selectedHeading: "",
 };
 
 const PLUGIN_NAME = "foldercanvas";
@@ -233,6 +235,21 @@ export default class FolderCanvasPlugin extends Plugin {
 	async triggerCommandById() {
 		(this.app as any).commands.executeCommandById(COMMAND_FULL_ID);
 	}
+
+	async getHeadings(): Promise<string[]> {
+		const activeFile = this.app.workspace.getActiveFile();
+		if (!activeFile) return [];
+
+		return new Promise<string[]>((resolve) => {
+			this.app.vault.read(activeFile).then((content) => {
+				const headings = content
+					.split("\n")
+					.filter((line) => line.trim().match(/^#+\s+/))
+					.map((line) => line.replace(/^#+\s*/, ""));
+				resolve(headings);
+			});
+		});
+	}
 }
 
 class FolderCanvasSettingTab extends PluginSettingTab {
@@ -243,7 +260,7 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
-	display(): void {
+	async display(): Promise<void> {
 		const { containerEl } = this;
 		containerEl.empty();
 
@@ -405,6 +422,25 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 						nodeSpacingInput.value =
 							DEFAULT_SETTINGS.nodeSpacing.toString();
 					});
+			});
+
+		const headings = await this.plugin.getHeadings();
+
+		new Setting(containerEl)
+			.setName("Narrow to heading")
+			.setDesc(
+				"Choose a heading from the active file to apply to all nodes in a Canvas file."
+			)
+			.addDropdown((dropdown) => {
+				dropdown.addOption("", "Select a heading");
+				headings.forEach((heading) =>
+					dropdown.addOption(heading, heading)
+				);
+				dropdown.setValue(this.plugin.settings.selectedHeading);
+				dropdown.onChange(async (value) => {
+					this.plugin.settings.selectedHeading = value;
+					await this.plugin.saveSettings();
+				});
 			});
 	}
 

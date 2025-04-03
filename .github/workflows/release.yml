@@ -1,10 +1,10 @@
-name: Build and Upload Obsidian Plugin
+name: Release Obsidian Plugin
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Build version (e.g., v1.0.0)"
+        description: "Release version (e.g., v1.0.0)"
         required: true
         default: "v1.0.0"
 
@@ -35,10 +35,15 @@ jobs:
           test -f ./dist/main.js || (echo "main.js not found" && exit 1)
           test -f ./manifest.json || (echo "manifest.json not found" && exit 1)
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: plugin-files
-          path: |
-            ./dist/main.js
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ github.event.inputs.version }}"
+          echo "Creating release with tag: $tag"
+          gh release create "$tag" \
+            --title "$tag" \
+            --draft \
+            ./dist/main.js \
             ./manifest.json
+          echo "Release created successfully"

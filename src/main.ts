@@ -13,7 +13,6 @@ import { createCanvasWithNodes } from "./components/CanvasGenerator";
 import { FolderSuggestModal } from "./components/FolderSuggestModal";
 import { normalizeFileName, parseFileName } from "./utils";
 
-// 设置接口和默认值保持不变
 export interface FolderCanvasPluginSettings {
   nodesPerRow: number;
   openOnCreate: boolean;
@@ -91,6 +90,7 @@ export default class FolderCanvasPlugin extends Plugin {
       })
     );
 
+    // 原有的 file-menu 事件
     this.registerEvent(
       this.app.workspace.on("file-menu", (menu, file) => {
         menu.addItem((item) => {
@@ -99,6 +99,22 @@ export default class FolderCanvasPlugin extends Plugin {
             .setIcon("palette")
             .onClick(async () => this.triggerCommandById());
         });
+      })
+    );
+
+    // 新增右键菜单项，仅对 Canvas 文件显示
+    this.registerEvent(
+      this.app.workspace.on("file-menu", (menu, file) => {
+        if (file instanceof TFile && file.extension === "canvas") {
+          menu.addItem((item) => {
+            item
+              .setTitle("Add New Canvas")
+              .setIcon("plus")
+              .onClick(async () => {
+                await this.addNewCanvasToCurrent();
+              });
+          });
+        }
       })
     );
 
@@ -250,7 +266,6 @@ export default class FolderCanvasPlugin extends Plugin {
     });
   }
 
-  // 新增功能：创建新 Canvas 并添加到当前 Canvas
   async addNewCanvasToCurrent() {
     const activeFile = this.app.workspace.getActiveFile();
     if (!activeFile || activeFile.extension !== "canvas") {
@@ -258,11 +273,9 @@ export default class FolderCanvasPlugin extends Plugin {
       return;
     }
 
-    // 获取当前 Canvas 的文件夹路径
     const folderPath = activeFile.parent?.path || "/";
     const newCanvasName = `New-Canvas-${Date.now()}.canvas`;
 
-    // 创建空的 Canvas 文件
     const newCanvasData = {
       nodes: [],
       edges: [],
@@ -277,19 +290,15 @@ export default class FolderCanvasPlugin extends Plugin {
       return;
     }
 
-    // 读取当前 Canvas 的数据
     const currentCanvasData: TCanvasData = JSON.parse(
       await this.app.vault.read(activeFile)
     );
 
-    // 计算新节点的索引和位置
     const index = currentCanvasData.nodes.length;
     const newNode = new CanvasNode(index, newCanvasFile.path, this.settings);
 
-    // 添加新节点到当前 Canvas
     currentCanvasData.nodes.push(newNode.toJSON());
 
-    // 更新当前 Canvas 文件
     await this.app.vault.modify(
       activeFile,
       JSON.stringify(currentCanvasData, null, 2)

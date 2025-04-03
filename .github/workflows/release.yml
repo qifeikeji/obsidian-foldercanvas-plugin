@@ -1,10 +1,10 @@
-name: Release Obsidian Plugin
+name: Build and Upload Obsidian Plugin
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version (e.g., v1.0.0)"
+        description: "Build version (e.g., v1.0.0)"
         required: true
         default: "v1.0.0"
 
@@ -42,11 +42,3 @@ jobs:
           path: |
             ./dist/main.js
             ./manifest.json
-        continue-on-error: true  # 如果上传失败，继续运行以查看日志
-
-      - name: Debug upload failure
-        if: steps.upload-artifacts.outputs.failed == 'true'  # 检查上一步是否失败
-        run: |
-          echo "Upload failed. Checking file existence again:"
-          ls -la ./dist/main.js || echo "./dist/main.js not found"
-          ls -la ./manifest.json || echo "./manifest.json not found"

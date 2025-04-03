@@ -15,7 +15,6 @@ function getCanvasFilesInFolder(folderPath: string, basename: string): TFile[] {
 				files.push(file);
 			}
 		} else {
-			// @ts-ignore - Accessing children property of TFolder
 			file.children?.forEach((child) => getAllFiles(child));
 		}
 	};
@@ -27,25 +26,21 @@ function getCanvasFilesInFolder(folderPath: string, basename: string): TFile[] {
 function generateUniqueFileName(folderPath: string, fileName: string): string {
 	const normalizedFileName = normalizeFileName(fileName);
 	const components = parseFileName(normalizedFileName);
-	const existingFiles = getCanvasFilesInFolder(
-		folderPath,
-		components.baseName
-	);
+	const existingFiles = getCanvasFilesInFolder(folderPath, components.baseName);
 
-	// Find the highest number used in existing files with the same base name
 	let highestNumber = 0;
 	existingFiles.forEach((file: TFile) => {
 		const existingComponents = parseFileName(file.name);
 		highestNumber = existingComponents.number ?? 1;
 	});
 
-	// Generate the next available number
 	const newFileName =
 		highestNumber === 0
 			? normalizedFileName
 			: `${components.baseName} ${highestNumber + 1}${components.ext}`;
 	return `${folderPath}/${newFileName}`;
 }
+
 export async function createCanvasWithNodes(
 	app: App,
 	folderPath: string,
@@ -64,28 +59,20 @@ export async function createCanvasWithNodes(
 	);
 
 	const canvasData = {
-		nodes: await Promise.all(
-			files.map(async (file, index) => {
+		nodes: files
+			.map((file, index) => {
 				try {
-					const content = await app.vault.read(file);
-					const headings = content
-						.split("\n")
-						.filter((line: string) => line.trim().match(/^#+\s+/))
-						.map((line: string) => line.replace(/^#+\s*/, ""));
-
-					if (!headings.includes(settings.selectedHeading)) {
-						settings.selectedHeading = "";
-					}
-
+					// 不再读取内容，直接创建节点
 					return new CanvasNode(index, file.path, settings);
 				} catch (error) {
 					console.log(error);
 					return null;
 				}
 			})
-		),
+			.filter((node) => node !== null), // 过滤掉可能的 null 值
 		edges: [],
 	};
+
 	const canvasFile = await app.vault.create(
 		canvasFileNameWithFolder,
 		JSON.stringify(canvasData, null, 2)

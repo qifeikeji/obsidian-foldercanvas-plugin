@@ -79,6 +79,7 @@ export default class FolderCanvasPlugin extends Plugin {
       },
     });
 
+    // 原有的 editor-menu 事件
     this.registerEvent(
       this.app.workspace.on("editor-menu", (menu, editor, view) => {
         menu.addItem((item) => {
@@ -102,10 +103,27 @@ export default class FolderCanvasPlugin extends Plugin {
       })
     );
 
-    // 新增右键菜单项，仅对 Canvas 文件显示
+    // 文件右键菜单项
     this.registerEvent(
       this.app.workspace.on("file-menu", (menu, file) => {
         if (file instanceof TFile && file.extension === "canvas") {
+          menu.addItem((item) => {
+            item
+              .setTitle("Add New Canvas")
+              .setIcon("plus")
+              .onClick(async () => {
+                await this.addNewCanvasToCurrent();
+              });
+          });
+        }
+      })
+    );
+
+    // 新增白板区域右键菜单项
+    this.registerEvent(
+      this.app.workspace.on("editor-menu", (menu, editor, view) => {
+        const activeFile = this.app.workspace.getActiveFile();
+        if (activeFile && activeFile.extension === "canvas") {
           menu.addItem((item) => {
             item
               .setTitle("Add New Canvas")

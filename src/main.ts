@@ -16,6 +16,7 @@ import { createCanvasWithNodes } from "./components/CanvasGenerator";
 import { FolderSuggestModal } from "./components/FolderSuggestModal";
 import { normalizeFileName, parseFileName } from "./utils";
 
+// 设置接口和默认值保持不变
 export interface FolderCanvasPluginSettings {
 	nodesPerRow: number;
 	openOnCreate: boolean;
@@ -101,15 +102,15 @@ export default class FolderCanvasPlugin extends Plugin {
 		this.app.workspace.onLayoutReady(() => {
 			this.registerEvent(
 				this.app.vault.on("create", async (file) => {
-					if (file instanceof TFile && file.extension === "md") {
-						setTimeout(() => this.updateCanvas("add", file), 100); // add 100ms delay to ensure file is fully created
+					if (file instanceof TFile && file.extension === "canvas") { // 修改为监听 .canvas 文件
+						setTimeout(() => this.updateCanvas("add", file), 100);
 					}
 				})
 			);
 
 			this.registerEvent(
 				this.app.vault.on("delete", async (file) => {
-					if (file instanceof TFile && file.extension === "md") {
+					if (file instanceof TFile && file.extension === "canvas") { // 修改为监听 .canvas 文件
 						this.updateCanvas("remove", file);
 					}
 				})
@@ -117,7 +118,7 @@ export default class FolderCanvasPlugin extends Plugin {
 
 			this.registerEvent(
 				this.app.vault.on("rename", async (file, oldPath) => {
-					if (file instanceof TFile && file.extension === "md") {
+					if (file instanceof TFile && file.extension === "canvas") { // 修改为监听 .canvas 文件
 						setTimeout(
 							() => this.updateCanvas("rename", file, oldPath),
 							100
@@ -142,10 +143,14 @@ export default class FolderCanvasPlugin extends Plugin {
 
 	async generateCanvas(folder: TFolder) {
 		const canvasFilename = this.settings.canvasFileName;
+		const activeFile = this.app.workspace.getActiveFile(); // 获取当前活动的文件
 
+		// 筛选 .canvas 文件，并排除当前活动的 Canvas 文件
 		const files = folder.children.filter(
 			(file): file is TFile =>
-				file instanceof TFile && file.extension === "md"
+				file instanceof TFile &&
+				file.extension === "canvas" &&
+				(activeFile ? file.path !== activeFile.path : true) // 排除当前 Canvas
 		);
 
 		await createCanvasWithNodes(
@@ -158,13 +163,12 @@ export default class FolderCanvasPlugin extends Plugin {
 	}
 
 	async getCurrentCanvasFile(file: TFile) {
-		// Find the latest canvas file in the parent folder
 		const parentPath = file.path.split("/")[0];
-
 		const folder = this.app.vault.getFolderByPath(parentPath);
 		if (!folder) return;
 
 		const canvases: TFile[] = [];
+		const activeFile = this.app.workspace.getActiveFile(); // 获取当前活动的文件
 
 		const getCurrentCanvas = (file: TAbstractFile) => {
 			if (file instanceof TFile) {
@@ -174,12 +178,12 @@ export default class FolderCanvasPlugin extends Plugin {
 				const components = parseFileName(normalizedFileName);
 				if (
 					file.extension === "canvas" &&
-					file.path.includes(components.baseName)
+					file.path.includes(components.baseName) &&
+					(activeFile ? file.path !== activeFile.path : true) // 排除当前 Canvas
 				) {
 					canvases.push(file);
 				}
 			} else {
-				// @ts-ignore - Accessing children property of TFolder
 				file.children?.forEach((child) => getCurrentCanvas(child));
 			}
 		};
@@ -201,15 +205,15 @@ export default class FolderCanvasPlugin extends Plugin {
 		const canvasData: TCanvasData = JSON.parse(
 			await this.app.vault.read(canvasFile)
 		);
+		const activeFile = this.app.workspace.getActiveFile(); // 获取当前活动的文件
 
 		if (action === "add") {
-			if (canvasFile.parent) {
+			if (canvasFile.parent && (!activeFile || file.path !== activeFile.path)) { // 排除当前 Canvas
 				const index = canvasFile.parent.children.filter(
-					(file: TFile) => file.extension === "md"
+					(f: TFile) => f.extension === "canvas" && (!activeFile || f.path !== activeFile.path)
 				).length;
 
 				const newNode = new CanvasNode(index, file.path, this.settings);
-
 				canvasData.nodes.push(newNode.toJSON());
 			}
 		} else if (action === "remove") {
@@ -219,12 +223,11 @@ export default class FolderCanvasPlugin extends Plugin {
 		} else if (action === "rename" && oldPath) {
 			canvasData.nodes.forEach((node: TCanvasNode) => {
 				if (node.file === oldPath) {
-					node.file = file.path; // Update to the new file path
+					node.file = file.path;
 				}
 			});
 		}
 
-		// Update the canvas file with modified data
 		await this.app.vault.modify(
 			canvasFile,
 			JSON.stringify(canvasData, null, 2)
@@ -252,6 +255,7 @@ export default class FolderCanvasPlugin extends Plugin {
 	}
 }
 
+// FolderCanvasSettingTab 类保持不变
 class FolderCanvasSettingTab extends PluginSettingTab {
 	plugin: FolderCanvasPlugin;
 
@@ -274,7 +278,6 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 					.setPlaceholder("Canvas-<Date>.canvas")
 					.setValue(this.plugin.settings.canvasFileName)
 					.onChange(async (value) => {
-						// Check for invalid characters
 						if (/[\\/]/.test(value)) {
 							new Notice(
 								"Invalid characters: '/' and '\\' are not allowed."
@@ -288,7 +291,6 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 					})
 			);
 
-		// Toggle setting for opening canvas on creation
 		new Setting(containerEl)
 			.setName("Open Canvas on creation")
 			.setDesc(
@@ -303,7 +305,6 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 					})
 			);
 
-		// Toggle setting for watching file changes in canvas folder
 		new Setting(containerEl)
 			.setName("Watch Canvas folder")
 			.setDesc(
@@ -318,7 +319,6 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 					})
 			);
 
-		// Slider setting for nodes per row
 		const nodesPerRowSetting = new Setting(containerEl)
 			.setName(`Nodes per row: ${this.plugin.settings.nodesPerRow}`)
 			.setDesc("Number of nodes to display per row in the Canvas.")
@@ -333,7 +333,6 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 					})
 			);
 
-		// Adjust the dimensions and spacing
 		let nodeWidthInput: HTMLInputElement;
 		new Setting(containerEl)
 			.setName("Node width")
@@ -446,11 +445,9 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 
 	validateInput(value: string, max: number): number {
 		let num = parseInt(value, 10);
-
 		if (isNaN(num)) {
 			num = 0;
 		}
-
-		return Math.min(num, max); // Enforce maximum constraint
+		return Math.min(num, max);
 	}
 }

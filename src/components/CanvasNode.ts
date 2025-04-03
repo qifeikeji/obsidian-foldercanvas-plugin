@@ -8,7 +8,7 @@ export type TCanvasNode = {
 	height: number;
 	type: string;
 	file: string;
-	subpath?: string;
+	// subpath?: string; // 可选择移除此字段，因为不再需要
 };
 
 export type TCanvasData = {
@@ -28,20 +28,14 @@ class CanvasNode {
 	height: number;
 	type: string;
 	file: string;
-	subpath?: string;
+	// subpath?: string; // 可选择移除此字段
 
 	constructor(
 		index: number,
 		filePath: string,
 		settings: FolderCanvasPluginSettings
 	) {
-		const {
-			nodesPerRow,
-			nodeWidth,
-			nodeHeight,
-			nodeSpacing,
-			selectedHeading,
-		} = settings;
+		const { nodesPerRow, nodeWidth, nodeHeight, nodeSpacing } = settings;
 
 		this.id = `node-${index}`;
 		this.x = (index % nodesPerRow) * (nodeWidth + nodeSpacing);
@@ -50,7 +44,7 @@ class CanvasNode {
 		this.height = nodeHeight;
 		this.type = "file";
 		this.file = filePath;
-		this.subpath = selectedHeading ? `#${selectedHeading}` : undefined;
+		// 移除 subpath 逻辑，因为 .canvas 文件不需要标题
 	}
 
 	toJSON() {
@@ -62,7 +56,7 @@ class CanvasNode {
 			height: this.height,
 			type: this.type,
 			file: this.file,
-			subpath: this.subpath,
+			// subpath: this.subpath, // 移除此字段
 		};
 	}
 }

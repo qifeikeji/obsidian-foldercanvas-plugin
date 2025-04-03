@@ -162,31 +162,33 @@ export default class FolderCanvasPlugin extends Plugin {
 		);
 	}
 
-	async getCurrentCanvasFile(file: TFile) {
-		const parentPath = file.path.split("/")[0];
-		const folder = this.app.vault.getFolderByPath(parentPath);
-		if (!folder) return;
+    async getCurrentCanvasFile(file: TFile) {
+      const parentPath = file.path.split("/")[0];
+      const folder = this.app.vault.getFolderByPath(parentPath);
+      if (!folder) return;  
 
-		const canvases: TFile[] = [];
-		const activeFile = this.app.workspace.getActiveFile(); // 获取当前活动的文件
+      const canvases: TFile[] = [];
+      const activeFile = this.app.workspace.getActiveFile();    
 
-		const getCurrentCanvas = (file: TAbstractFile) => {
-			if (file instanceof TFile) {
-				const normalizedFileName = normalizeFileName(
-					this.settings.canvasFileName
-				);
-				const components = parseFileName(normalizedFileName);
-				if (
-					file.extension === "canvas" &&
-					file.path.includes(components.baseName) &&
-					(activeFile ? file.path !== activeFile.path : true) // 排除当前 Canvas
-				) {
-					canvases.push(file);
-				}
-			} else {
-				file.children?.forEach((child) => getCurrentCanvas(child));
-			}
-		};
+      const getCurrentCanvas = (file: TAbstractFile) => {
+        if (file instanceof TFile) {
+          const normalizedFileName = normalizeFileName(this.settings.canvasFileName);
+          const components = parseFileName(normalizedFileName);
+          if (
+            file.extension === "canvas" &&
+            file.path.includes(components.baseName) &&
+            (activeFile ? file.path !== activeFile.path : true)
+          ) {
+            canvases.push(file);
+          }
+        } else if (file instanceof TFolder) { // 添加类型检查
+          file.children.forEach((child: TAbstractFile) => getCurrentCanvas(child)); // 添加 child 类型
+        }
+      };    
+
+      getCurrentCanvas(folder);
+      return canvases?.pop();
+    }
 
 		getCurrentCanvas(folder);
 		return canvases?.pop();

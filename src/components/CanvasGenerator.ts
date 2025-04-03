@@ -1,4 +1,4 @@
-import { App, TFile, Notice, TAbstractFile } from "obsidian";
+import { App, TFile, Notice, TAbstractFile, TFolder } from "obsidian"; // 添加 TFolder 导入
 import { normalizeFileName, parseFileName } from "src/utils";
 import CanvasNode from "./CanvasNode";
 import { FolderCanvasPluginSettings } from "src/main";
@@ -14,7 +14,7 @@ function getCanvasFilesInFolder(folderPath: string, basename: string): TFile[] {
       if (file.extension === "canvas" && file.path.includes(basename)) {
         files.push(file);
       }
-    } else if (file instanceof TFolder) {
+    } else if (file instanceof TFolder) { // 使用导入的 TFolder
       file.children.forEach((child: TAbstractFile) => getAllFiles(child));
     }
   };

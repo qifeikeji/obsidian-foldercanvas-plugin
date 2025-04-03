@@ -1,9 +1,12 @@
 name: Release Obsidian Plugin
 
 on:
-  push:
-    tags:
-      - "*" # 触发条件：推送任意标签时运行
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g., v1.0.0)"
+        required: true
+        default: "v1.0.0"
 
 jobs:
   build:
@@ -27,7 +30,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="${GITHUB_REF#refs/tags/}"
+          tag="${{ github.event.inputs.version }}"
           gh release create "$tag" \
             --title "$tag" \
             --draft \

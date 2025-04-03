@@ -14,8 +14,8 @@ function getCanvasFilesInFolder(folderPath: string, basename: string): TFile[] {
       if (file.extension === "canvas" && file.path.includes(basename)) {
         files.push(file);
       }
-    } else if (file instanceof TFolder) { // 添加类型检查
-      file.children.forEach((child: TAbstractFile) => getAllFiles(child)); // 添加 child 类型
+    } else if (file instanceof TFolder) {
+      file.children.forEach((child: TAbstractFile) => getAllFiles(child));
     }
   };
 
@@ -24,67 +24,66 @@ function getCanvasFilesInFolder(folderPath: string, basename: string): TFile[] {
 }
 
 function generateUniqueFileName(folderPath: string, fileName: string): string {
-	const normalizedFileName = normalizeFileName(fileName);
-	const components = parseFileName(normalizedFileName);
-	const existingFiles = getCanvasFilesInFolder(folderPath, components.baseName);
+  const normalizedFileName = normalizeFileName(fileName);
+  const components = parseFileName(normalizedFileName);
+  const existingFiles = getCanvasFilesInFolder(folderPath, components.baseName);
 
-	let highestNumber = 0;
-	existingFiles.forEach((file: TFile) => {
-		const existingComponents = parseFileName(file.name);
-		highestNumber = existingComponents.number ?? 1;
-	});
+  let highestNumber = 0;
+  existingFiles.forEach((file: TFile) => {
+    const existingComponents = parseFileName(file.name);
+    highestNumber = existingComponents.number ?? 1;
+  });
 
-	const newFileName =
-		highestNumber === 0
-			? normalizedFileName
-			: `${components.baseName} ${highestNumber + 1}${components.ext}`;
-	return `${folderPath}/${newFileName}`;
+  const newFileName =
+    highestNumber === 0
+      ? normalizedFileName
+      : `${components.baseName} ${highestNumber + 1}${components.ext}`;
+  return `${folderPath}/${newFileName}`;
 }
 
 export async function createCanvasWithNodes(
-	app: App,
-	folderPath: string,
-	files: TFile[],
-	canvasFileName: string,
-	settings: FolderCanvasPluginSettings
+  app: App,
+  folderPath: string,
+  files: TFile[],
+  canvasFileName: string,
+  settings: FolderCanvasPluginSettings
 ) {
-	if (files.length === 0) {
-		new Notice("The folder is empty!");
-		return;
-	}
+  if (files.length === 0) {
+    new Notice("The folder is empty!");
+    return;
+  }
 
-	const canvasFileNameWithFolder = generateUniqueFileName(
-		folderPath,
-		canvasFileName
-	);
+  const canvasFileNameWithFolder = generateUniqueFileName(
+    folderPath,
+    canvasFileName
+  );
 
-	const canvasData = {
-		nodes: files
-			.map((file, index) => {
-				try {
-					// 不再读取内容，直接创建节点
-					return new CanvasNode(index, file.path, settings);
-				} catch (error) {
-					console.log(error);
-					return null;
-				}
-			})
-			.filter((node) => node !== null), // 过滤掉可能的 null 值
-		edges: [],
-	};
+  const canvasData = {
+    nodes: files
+      .map((file, index) => {
+        try {
+          return new CanvasNode(index, file.path, settings);
+        } catch (error) {
+          console.log(error);
+          return null;
+        }
+      })
+      .filter((node) => node !== null),
+    edges: [],
+  };
 
-	const canvasFile = await app.vault.create(
-		canvasFileNameWithFolder,
-		JSON.stringify(canvasData, null, 2)
-	);
+  const canvasFile = await app.vault.create(
+    canvasFileNameWithFolder,
+    JSON.stringify(canvasData, null, 2)
+  );
 
-	if (settings.openOnCreate) {
-		await app.workspace.openLinkText(canvasFileNameWithFolder, "", true);
-	}
+  if (settings.openOnCreate) {
+    await app.workspace.openLinkText(canvasFileNameWithFolder, "", true);
+  }
 
-	if (canvasFile) {
-		new Notice(`Canvas created at ${canvasFileNameWithFolder}`);
-	} else {
-		new Notice("Failed to create a Canvas file.");
-	}
+  if (canvasFile) {
+    new Notice(`Canvas created at ${canvasFileNameWithFolder}`);
+  } else {
+    new Notice("Failed to create a Canvas file.");
+  }
 }

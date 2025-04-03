@@ -8,14 +8,12 @@ import {
   TFile,
   TFolder,
 } from "obsidian";
-import CanvasNode, {
-  TCanvasData,
-  TCanvasNode,
-} from "src/components/CanvasNode";
+import CanvasNode, { TCanvasData, TCanvasNode } from "src/components/CanvasNode";
 import { createCanvasWithNodes } from "./components/CanvasGenerator";
 import { FolderSuggestModal } from "./components/FolderSuggestModal";
 import { normalizeFileName, parseFileName } from "./utils";
 
+// 设置接口和默认值保持不变
 export interface FolderCanvasPluginSettings {
   nodesPerRow: number;
   openOnCreate: boolean;
@@ -55,9 +53,15 @@ export default class FolderCanvasPlugin extends Plugin {
   async onload() {
     await this.loadSettings();
 
+    // 原有的调色板图标
     this.addRibbonIcon("palette", "Folder Canvas", (evt: MouseEvent) =>
       this.triggerCommandById()
     );
+
+    // 新增的加号图标
+    this.addRibbonIcon("plus", "Add Canvas to Current", async (evt: MouseEvent) => {
+      await this.addNewCanvasToCurrent();
+    });
 
     this.addSettingTab(new FolderCanvasSettingTab(this.app, this));
 
@@ -163,9 +167,7 @@ export default class FolderCanvasPlugin extends Plugin {
 
     const getCurrentCanvas = (file: TAbstractFile) => {
       if (file instanceof TFile) {
-        const normalizedFileName = normalizeFileName(
-          this.settings.canvasFileName
-        );
+        const normalizedFileName = normalizeFileName(this.settings.canvasFileName);
         const components = parseFileName(normalizedFileName);
         if (
           file.extension === "canvas" &&
@@ -175,9 +177,7 @@ export default class FolderCanvasPlugin extends Plugin {
           canvases.push(file);
         }
       } else if (file instanceof TFolder) {
-        file.children.forEach((child: TAbstractFile) =>
-          getCurrentCanvas(child)
-        );
+        file.children.forEach((child: TAbstractFile) => getCurrentCanvas(child));
       }
     };
 
@@ -195,9 +195,7 @@ export default class FolderCanvasPlugin extends Plugin {
     const canvasFile = await this.getCurrentCanvasFile(file);
     if (!canvasFile) return;
 
-    const canvasData: TCanvasData = JSON.parse(
-      await this.app.vault.read(canvasFile)
-    );
+    const canvasData: TCanvasData = JSON.parse(await this.app.vault.read(canvasFile));
     const activeFile = this.app.workspace.getActiveFile();
 
     if (action === "add") {
@@ -251,8 +249,57 @@ export default class FolderCanvasPlugin extends Plugin {
       });
     });
   }
+
+  // 新增功能：创建新 Canvas 并添加到当前 Canvas
+  async addNewCanvasToCurrent() {
+    const activeFile = this.app.workspace.getActiveFile();
+    if (!activeFile || activeFile.extension !== "canvas") {
+      new Notice("Please open a Canvas file first.");
+      return;
+    }
+
+    // 获取当前 Canvas 的文件夹路径
+    const folderPath = activeFile.parent?.path || "/";
+    const newCanvasName = `New-Canvas-${Date.now()}.canvas`;
+
+    // 创建空的 Canvas 文件
+    const newCanvasData = {
+      nodes: [],
+      edges: [],
+    };
+    const newCanvasFile = await this.app.vault.create(
+      `${folderPath}/${newCanvasName}`,
+      JSON.stringify(newCanvasData, null, 2)
+    );
+
+    if (!newCanvasFile) {
+      new Notice("Failed to create new Canvas file.");
+      return;
+    }
+
+    // 读取当前 Canvas 的数据
+    const currentCanvasData: TCanvasData = JSON.parse(
+      await this.app.vault.read(activeFile)
+    );
+
+    // 计算新节点的索引和位置
+    const index = currentCanvasData.nodes.length;
+    const newNode = new CanvasNode(index, newCanvasFile.path, this.settings);
+
+    // 添加新节点到当前 Canvas
+    currentCanvasData.nodes.push(newNode.toJSON());
+
+    // 更新当前 Canvas 文件
+    await this.app.vault.modify(
+      activeFile,
+      JSON.stringify(currentCanvasData, null, 2)
+    );
+
+    new Notice(`New Canvas created and added: ${newCanvasName}`);
+  }
 }
 
+// FolderCanvasSettingTab 类保持不变
 class FolderCanvasSettingTab extends PluginSettingTab {
   plugin: FolderCanvasPlugin;
 

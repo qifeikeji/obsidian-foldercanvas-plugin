@@ -37,7 +37,7 @@ const context = await esbuild.context({
   logLevel: "info",
   sourcemap: prod ? false : "inline",
   treeShaking: true,
-  outfile: "dist/main.js", // 修改为 dist/main.js
+  outfile: "dist/main.js",
   minify: prod,
 });
 

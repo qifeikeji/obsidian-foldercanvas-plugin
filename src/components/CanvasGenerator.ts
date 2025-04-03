@@ -4,23 +4,23 @@ import CanvasNode from "./CanvasNode";
 import { FolderCanvasPluginSettings } from "src/main";
 
 function getCanvasFilesInFolder(folderPath: string, basename: string): TFile[] {
-	const folder = this.app.vault.getFolderByPath(folderPath);
-	if (!folder) return [];
+  const folder = this.app.vault.getFolderByPath(folderPath);
+  if (!folder) return [];
 
-	const files: TFile[] = [];
+  const files: TFile[] = [];
 
-	const getAllFiles = (file: TAbstractFile) => {
-		if (file instanceof TFile) {
-			if (file.extension === "canvas" && file.path.includes(basename)) {
-				files.push(file);
-			}
-		} else {
-			file.children?.forEach((child) => getAllFiles(child));
-		}
-	};
+  const getAllFiles = (file: TAbstractFile) => {
+    if (file instanceof TFile) {
+      if (file.extension === "canvas" && file.path.includes(basename)) {
+        files.push(file);
+      }
+    } else if (file instanceof TFolder) { // 添加类型检查
+      file.children.forEach((child: TAbstractFile) => getAllFiles(child)); // 添加 child 类型
+    }
+  };
 
-	getAllFiles(folder);
-	return files;
+  getAllFiles(folder);
+  return files;
 }
 
 function generateUniqueFileName(folderPath: string, fileName: string): string {

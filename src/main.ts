@@ -287,7 +287,7 @@ export default class FolderCanvasPlugin extends Plugin {
   async addNewCanvasToCurrent() {
     const activeFile = this.app.workspace.getActiveFile();
     if (!activeFile || activeFile.extension !== "canvas") {
-      new Notice("Please open a Canvas file first.");
+      new Notice("请先打开一个Canvas文件。");
       return;
     }
 
@@ -304,7 +304,7 @@ export default class FolderCanvasPlugin extends Plugin {
     );
 
     if (!newCanvasFile) {
-      new Notice("Failed to create new Canvas file.");
+      new Notice("创建新的Canvas文件失败。");
       return;
     }
 
@@ -312,16 +312,22 @@ export default class FolderCanvasPlugin extends Plugin {
       await this.app.vault.read(activeFile)
     );
 
-    // Get the current canvas view's viewport center
+    // 获取当前canvas视图的视口中心
     const canvasView = this.app.workspace.getActiveViewOfType<any>(Object);
     let centerX = 0;
     let centerY = 0;
 
     if (canvasView && canvasView.canvas) {
       const canvas = canvasView.canvas;
-      const { x, y, width, height } = canvas.viewPort;
-      centerX = x + width / 2;
-      centerY = y + height / 2;
+      const { zoom, camera } = canvas;
+      const container = canvas.containerEl.getBoundingClientRect();
+      const viewportWidth = container.width;
+      const viewportHeight = container.height;
+
+      // 计算视口中心在canvas坐标系中的位置
+      // camera.x, camera.y 是canvas的偏移量，zoom 是缩放比例
+      centerX = -camera.x / zoom + viewportWidth / (2 * zoom);
+      centerY = -camera.y / zoom + viewportHeight / (2 * zoom);
     }
 
     const index = currentCanvasData.nodes.length;
@@ -334,7 +340,7 @@ export default class FolderCanvasPlugin extends Plugin {
       JSON.stringify(currentCanvasData, null, 2)
     );
 
-    new Notice(`New Canvas created and added: ${newCanvasName}`);
+    new Notice(`新Canvas已创建并添加：${newCanvasName}`);
   }
 }
 
@@ -351,9 +357,9 @@ class FolderCanvasSettingTab extends PluginSettingTab {
     containerEl.empty();
 
     new Setting(containerEl)
-      .setName("Canvas filename pattern")
+      .setName("Canvas文件名格式")
       .setDesc(
-        "Specify the default filename for a new canvas. (Cannot contain '/' or '\\')"
+        "指定新canvas的默认文件名。（不能包含 '/' 或 '\\'）"
       )
       .addText((text) =>
         text
@@ -361,7 +367,7 @@ class FolderCanvasSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.canvasFileName)
           .onChange(async (value) => {
             if (/[\\/]/.test(value)) {
-              new Notice("Invalid characters: '/' and '\\' are not allowed.");
+              new Notice("无效字符：不允许使用 '/' 和 '\\'。");
               text.setValue(this.plugin.settings.canvasFileName);
             } else {
               this.plugin.settings.canvasFileName =
@@ -372,8 +378,8 @@ class FolderCanvasSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Open Canvas on creation")
-      .setDesc("Automatically open the new Canvas file after it is created.")
+      .setName("创建后自动打开Canvas")
+      .setDesc("创建新Canvas文件后自动打开。")
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.openOnCreate)
@@ -384,9 +390,9 @@ class FolderCanvasSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Watch Canvas folder")
+      .setName("监控Canvas文件夹")
       .setDesc(
-        "Automatically update the Canvas when files are added or removed from the folder."
+        "当文件夹中的文件添加或删除时自动更新Canvas。"
       )
       .addToggle((toggle) =>
         toggle
@@ -398,8 +404,8 @@ class FolderCanvasSettingTab extends PluginSettingTab {
       );
 
     const nodesPerRowSetting = new Setting(containerEl)
-      .setName(`Nodes per row: ${this.plugin.settings.nodesPerRow}`)
-      .setDesc("Number of nodes to display per row in the Canvas.")
+      .setName(`每行节点数：${this.plugin.settings.nodesPerRow}`)
+      .setDesc("Canvas中每行显示的节点数。")
       .addSlider((slider) =>
         slider
           .setLimits(1, 10, 1)
@@ -407,14 +413,14 @@ class FolderCanvasSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.nodesPerRow = value;
             await this.plugin.saveSettings();
-            nodesPerRowSetting.setName(`Nodes per row: ${value}`);
+            nodesPerRowSetting.setName(`每行节点数：${value}`);
           })
       );
 
     let nodeWidthInput: HTMLInputElement;
     new Setting(containerEl)
-      .setName("Node width")
-      .setDesc("Set the width of nodes (default: 250, max: 1000).")
+      .setName("节点宽度")
+      .setDesc("设置节点的宽度（默认：250，最大：1000）。")
       .addText((text) => {
         text
           .setValue(this.plugin.settings.nodeWidth.toString())
@@ -430,8 +436,8 @@ class FolderCanvasSettingTab extends PluginSettingTab {
       })
       .addButton((button) => {
         button
-          .setButtonText("Reset")
-          .setTooltip("Reset to default")
+          .setButtonText("重置")
+          .setTooltip("恢复默认值")
           .onClick(async () => {
             this.plugin.settings.nodeWidth = DEFAULT_SETTINGS.nodeWidth;
             await this.plugin.saveSettings();
@@ -441,8 +447,8 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 
     let nodeHeightInput: HTMLInputElement;
     new Setting(containerEl)
-      .setName("Node height")
-      .setDesc("Set the height of nodes (default: 100, max: 1000).")
+      .setName("节点高度")
+      .setDesc("设置节点的高度（默认：100，最大：1000）。")
       .addText((text) => {
         text
           .setValue(this.plugin.settings.nodeHeight.toString())
@@ -458,8 +464,8 @@ class FolderCanvasSettingTab extends PluginSettingTab {
       })
       .addButton((button) => {
         button
-          .setButtonText("Reset")
-          .setTooltip("Reset to default")
+          .setButtonText("重置")
+          .setTooltip("恢复默认值")
           .onClick(async () => {
             this.plugin.settings.nodeHeight = DEFAULT_SETTINGS.nodeHeight;
             await this.plugin.saveSettings();
@@ -469,8 +475,8 @@ class FolderCanvasSettingTab extends PluginSettingTab {
 
     let nodeSpacingInput: HTMLInputElement;
     new Setting(containerEl)
-      .setName("Node spacing")
-      .setDesc("Set the spacing between nodes (default: 20, max: 100).")
+      .setName("节点间距")
+      .setDesc("设置节点之间的间距（默认：20，最大：100）。")
       .addText((text) => {
         text
           .setValue(this.plugin.settings.nodeSpacing.toString())
@@ -486,8 +492,8 @@ class FolderCanvasSettingTab extends PluginSettingTab {
       })
       .addButton((button) => {
         button
-          .setButtonText("Reset")
-          .setTooltip("Reset to default")
+          .setButtonText("重置")
+          .setTooltip("恢复默认值")
           .onClick(async () => {
             this.plugin.settings.nodeSpacing = DEFAULT_SETTINGS.nodeSpacing;
             await this.plugin.saveSettings();
@@ -498,12 +504,12 @@ class FolderCanvasSettingTab extends PluginSettingTab {
     const headings = await this.plugin.getHeadings();
 
     new Setting(containerEl)
-      .setName("Narrow to heading")
+      .setName("筛选标题")
       .setDesc(
-        "Choose a heading from the active file to apply to all nodes in a Canvas file."
+        "从活动文件中选择一个标题，应用于Canvas文件中的所有节点。"
       )
       .addDropdown((dropdown) => {
-        dropdown.addOption("", "Select a heading");
+        dropdown.addOption("", "选择一个标题");
         headings.forEach((heading) => dropdown.addOption(heading, heading));
         dropdown.setValue(this.plugin.settings.selectedHeading);
         dropdown.onChange(async (value) => {

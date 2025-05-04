@@ -312,8 +312,20 @@ export default class FolderCanvasPlugin extends Plugin {
       await this.app.vault.read(activeFile)
     );
 
+    // Get the current canvas view's viewport center
+    const canvasView = this.app.workspace.getActiveViewOfType<any>(Object);
+    let centerX = 0;
+    let centerY = 0;
+
+    if (canvasView && canvasView.canvas) {
+      const canvas = canvasView.canvas;
+      const { x, y, width, height } = canvas.viewPort;
+      centerX = x + width / 2;
+      centerY = y + height / 2;
+    }
+
     const index = currentCanvasData.nodes.length;
-    const newNode = new CanvasNode(index, newCanvasFile.path, this.settings);
+    const newNode = new CanvasNode(index, newCanvasFile.path, this.settings, centerX, centerY);
 
     currentCanvasData.nodes.push(newNode.toJSON());
 
@@ -326,7 +338,6 @@ export default class FolderCanvasPlugin extends Plugin {
   }
 }
 
-// FolderCanvasSettingTab 类保持不变
 class FolderCanvasSettingTab extends PluginSettingTab {
   plugin: FolderCanvasPlugin;
 
